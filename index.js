@@ -15,22 +15,24 @@ let exercises = [];
 let userIdCounter = 1;
 let exerciseIdCounter = 1;
 
-// User Schema - CHANGE: _id as string
+// User Schema
 class User {
   constructor(username) {
     this.username = username;
-    this._id = userIdCounter++.toString();  // FIX: Convert to string
+    this._id = userIdCounter.toString();  // Store as string
+    userIdCounter++;
   }
 }
 
-// Exercise Schema - CHANGE: _id as string  
+// Exercise Schema  
 class Exercise {
   constructor(userId, description, duration, date) {
-    this._id = exerciseIdCounter++.toString();  // FIX: Convert to string
-    this.userId = userId;
+    this._id = exerciseIdCounter.toString();  // Store as string
+    this.userId = userId;  // Keep userId as number for comparison
     this.description = description;
     this.duration = parseInt(duration);
     this.date = date ? new Date(date).toDateString() : new Date().toDateString();
+    exerciseIdCounter++;
   }
 }
 
@@ -53,29 +55,34 @@ app.post('/api/users', (req, res) => {
   
   res.json({ 
     username: newUser.username, 
-    _id: newUser._id  // Already string
+    _id: newUser._id  // String
   });
 });
 
 // 2. Get all users
 app.get('/api/users', (req, res) => {
-  res.json(users.map(user => ({ 
-    username: user.username, 
-    _id: user._id  // Already string
-  })));
+  const userList = users.map(user => ({
+    username: user.username,
+    _id: user._id  // String
+  }));
+  res.json(userList);
 });
 
-// 3. Add exercise - CHANGE: Parse _id from string to number for comparison
+// 3. Add exercise - FIXED: Proper ID handling
 app.post('/api/users/:_id/exercises', (req, res) => {
-  const userId = parseInt(req.params._id); // Parse from URL param
+  const userIdParam = req.params._id; // This comes as string from URL
   const { description, duration, date } = req.body;
   
-  const user = users.find(u => u._id === userId.toString()); // FIX: Compare as string
+  // Find user by string _id
+  const user = users.find(u => u._id === userIdParam);
   if (!user) return res.json({ error: 'User not found' });
   
-  if (!description || !duration) return res.json({ error: 'Description and duration are required' });
+  if (!description || !duration) {
+    return res.json({ error: 'Description and duration are required' });
+  }
   
-  const exercise = new Exercise(userId, description, duration, date);
+  // Convert user._id back to number for exercise.userId
+  const exercise = new Exercise(parseInt(user._id), description, duration, date);
   exercises.push(exercise);
   
   res.json({
@@ -87,19 +94,29 @@ app.post('/api/users/:_id/exercises', (req, res) => {
   });
 });
 
-// 4. Get exercise log - CHANGE: Parse _id from string to number for comparison
+// 4. Get exercise log - FIXED: Proper ID handling
 app.get('/api/users/:_id/logs', (req, res) => {
-  const userId = parseInt(req.params._id); // Parse from URL param
+  const userIdParam = req.params._id; // This comes as string from URL
   const { from, to, limit } = req.query;
   
-  const user = users.find(u => u._id === userId.toString()); // FIX: Compare as string
+  // Find user by string _id
+  const user = users.find(u => u._id === userIdParam);
   if (!user) return res.json({ error: 'User not found' });
   
-  let userExercises = exercises.filter(ex => ex.userId === userId);
+  // Convert back to number for comparison with exercise.userId
+  const userIdNum = parseInt(user._id);
+  let userExercises = exercises.filter(ex => ex.userId === userIdNum);
   
-  if (from) userExercises = userExercises.filter(ex => new Date(ex.date) >= new Date(from));
-  if (to) userExercises = userExercises.filter(ex => new Date(ex.date) <= new Date(to));
-  if (limit) userExercises = userExercises.slice(0, parseInt(limit));
+  // Apply filters
+  if (from) {
+    userExercises = userExercises.filter(ex => new Date(ex.date) >= new Date(from));
+  }
+  if (to) {
+    userExercises = userExercises.filter(ex => new Date(ex.date) <= new Date(to));
+  }
+  if (limit) {
+    userExercises = userExercises.slice(0, parseInt(limit));
+  }
   
   const log = userExercises.map(ex => ({
     description: ex.description,
@@ -116,5 +133,8 @@ app.get('/api/users/:_id/logs', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Exercise Tracker running on port ${PORT}`);
+});
+
 module.exports = app;
