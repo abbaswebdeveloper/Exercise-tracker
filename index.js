@@ -15,18 +15,18 @@ let exercises = [];
 let userIdCounter = 1;
 let exerciseIdCounter = 1;
 
-// User Schema
+// User Schema - CHANGE: _id as string
 class User {
   constructor(username) {
     this.username = username;
-    this._id = userIdCounter++;  // FIX: _id instead of _id
+    this._id = userIdCounter++.toString();  // FIX: Convert to string
   }
 }
 
-// Exercise Schema  
+// Exercise Schema - CHANGE: _id as string  
 class Exercise {
   constructor(userId, description, duration, date) {
-    this._id = exerciseIdCounter++;  // FIX: _id instead of _id
+    this._id = exerciseIdCounter++.toString();  // FIX: Convert to string
     this.userId = userId;
     this.description = description;
     this.duration = parseInt(duration);
@@ -51,20 +51,26 @@ app.post('/api/users', (req, res) => {
   const newUser = new User(username);
   users.push(newUser);
   
-  res.json({ username: newUser.username, _id: newUser._id }); // FIX: _id
+  res.json({ 
+    username: newUser.username, 
+    _id: newUser._id  // Already string
+  });
 });
 
 // 2. Get all users
 app.get('/api/users', (req, res) => {
-  res.json(users.map(user => ({ username: user.username, _id: user._id }))); // FIX: _id
+  res.json(users.map(user => ({ 
+    username: user.username, 
+    _id: user._id  // Already string
+  })));
 });
 
-// 3. Add exercise
+// 3. Add exercise - CHANGE: Parse _id from string to number for comparison
 app.post('/api/users/:_id/exercises', (req, res) => {
-  const userId = parseInt(req.params._id);
+  const userId = parseInt(req.params._id); // Parse from URL param
   const { description, duration, date } = req.body;
   
-  const user = users.find(u => u._id === userId);
+  const user = users.find(u => u._id === userId.toString()); // FIX: Compare as string
   if (!user) return res.json({ error: 'User not found' });
   
   if (!description || !duration) return res.json({ error: 'Description and duration are required' });
@@ -72,8 +78,8 @@ app.post('/api/users/:_id/exercises', (req, res) => {
   const exercise = new Exercise(userId, description, duration, date);
   exercises.push(exercise);
   
-  res.json({ // FIX: All _id instead of _id
-    _id: user._id,
+  res.json({
+    _id: user._id,  // String
     username: user.username,
     description: exercise.description,
     duration: exercise.duration,
@@ -81,12 +87,12 @@ app.post('/api/users/:_id/exercises', (req, res) => {
   });
 });
 
-// 4. Get exercise log
+// 4. Get exercise log - CHANGE: Parse _id from string to number for comparison
 app.get('/api/users/:_id/logs', (req, res) => {
-  const userId = parseInt(req.params._id);
+  const userId = parseInt(req.params._id); // Parse from URL param
   const { from, to, limit } = req.query;
   
-  const user = users.find(u => u._id === userId);
+  const user = users.find(u => u._id === userId.toString()); // FIX: Compare as string
   if (!user) return res.json({ error: 'User not found' });
   
   let userExercises = exercises.filter(ex => ex.userId === userId);
@@ -101,8 +107,8 @@ app.get('/api/users/:_id/logs', (req, res) => {
     date: ex.date
   }));
   
-  res.json({ // FIX: _id instead of _id
-    _id: user._id,
+  res.json({
+    _id: user._id,  // String
     username: user.username,
     count: log.length,
     log: log
